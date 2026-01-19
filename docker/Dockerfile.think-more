@@ -1,0 +1,44 @@
+# Think More Agent Overlay
+# 基于官方 SWE-bench 镜像添加 Think More 约束系统
+# 使用方式: docker build --build-arg BASE_IMAGE=swebench/sweb.eval.x86_64.xxx -t xxx-think-more -f Dockerfile.think-more .
+
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+# 安装 Node.js 20.x LTS
+RUN apt-get update && apt-get install -y curl gnupg ca-certificates \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 Claude Code CLI
+RUN npm install -g @anthropic-ai/claude-code
+
+# 安装 Python 依赖 (Think More)
+RUN pip install --no-cache-dir pydantic>=2.0 jedi>=0.19 pyyaml>=6.0
+
+# 创建配置目录
+RUN mkdir -p /root/.claude/hooks /root/.claude/skills
+
+# 复制 Think More 源码
+COPY src/think_more /opt/think_more
+ENV PYTHONPATH="/opt:${PYTHONPATH}"
+
+# 复制 Claude Code 配置
+COPY .claude/settings.json /root/.claude/settings.json
+COPY .claude/skills/debugging.md /root/.claude/skills/debugging.md
+
+# 复制并设置 hooks (需要可执行权限)
+COPY docker/hooks/pytest_gate.py /root/.claude/hooks/pytest_gate.py
+COPY docker/hooks/post_test.py /root/.claude/hooks/post_test.py
+RUN chmod +x /root/.claude/hooks/*.py
+
+# 设置环境变量
+ENV CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+ENV API_TIMEOUT_MS=600000
+ENV THINK_MORE_ENABLED=1
+
+WORKDIR /testbed

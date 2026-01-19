@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # Think More 交互式开发环境
+  think-more-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.think-more
+      args:
+        BASE_IMAGE: swebench/sweb.eval.x86_64.base:latest
+    image: think-more:latest
+    container_name: think-more-runner
+    working_dir: /testbed
+    volumes:
+      # 挂载项目目录
+      - ../:/workspace
+      # 挂载输出目录
+      - ../experiments/output:/workspace/output
+    environment:
+      # Claude Code 认证
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-https://api.anthropic.com}
+      # 模型配置
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-sonnet}
+      # Think More 配置
+      - THINK_MORE_ENABLED=1
+      - THINK_MORE_STRICT=${THINK_MORE_STRICT:-1}
+      # 代理设置
+      - http_proxy=${http_proxy:-}
+      - https_proxy=${https_proxy:-}
+    network_mode: host
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "
+      echo '✅ Think More environment ready';
+      echo '📁 Hooks: /root/.claude/hooks/';
+      echo '📁 Skills: /root/.claude/skills/';
+      exec /bin/bash"
+
+  # Think More 批量评测服务
+  think-more-batch:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.think-more
+      args:
+        BASE_IMAGE: swebench/sweb.eval.x86_64.base:latest
+    image: think-more:latest
+    container_name: think-more-batch
+    working_dir: /testbed
+    volumes:
+      - ../:/workspace
+      - ../experiments/output:/workspace/output
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-https://api.anthropic.com}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-sonnet}
+      - THINK_MORE_ENABLED=1
+      - THINK_MORE_STRICT=1
+      - http_proxy=${http_proxy:-}
+      - https_proxy=${https_proxy:-}
+    network_mode: host
+    stdin_open: true
+    tty: true
+
+  # Baseline 对照组（不启用 Think More）
+  baseline-runner:
+    image: swebench/sweb.eval.x86_64.base:latest
+    container_name: baseline-runner
+    working_dir: /testbed
+    volumes:
+      - ../:/workspace
+      - ../experiments/output:/workspace/output
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-https://api.anthropic.com}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-sonnet}
+      - THINK_MORE_ENABLED=0
+      - http_proxy=${http_proxy:-}
+      - https_proxy=${https_proxy:-}
+    network_mode: host
+    stdin_open: true
+    tty: true
