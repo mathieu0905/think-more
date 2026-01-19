@@ -1,0 +1,6 @@
+# Baseline experiment config - no Think More constraints
+dataset_path: /home/zhihao/hdd/run_free_run_less_run_full/data/swe_bench_lite.json
+output_dir: /home/zhihao/hdd/think_more/experiments/output
+mode: baseline
+model: claude
+max_instances: 10  # Start small for testing
