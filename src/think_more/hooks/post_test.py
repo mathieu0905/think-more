@@ -1,9 +1,15 @@
 """Post-test hook: logs test execution and reminds agent to update state."""
 import json
 import re
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+
+# Add src to path when running as standalone script
+_src_path = Path(__file__).parent.parent.parent
+if str(_src_path) not in sys.path:
+    sys.path.insert(0, str(_src_path))
 
 from think_more.anti_cheat import CheckResult, validate_patch
 
