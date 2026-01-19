@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from think_more.anti_cheat import CheckResult, validate_patch
+
 
 PYTEST_PATTERNS = [
     r"\bpytest\b",
@@ -26,6 +28,7 @@ class TraceEntry:
     command: str
     exit_code: int
     output_length: int
+    anti_cheat_flags: int = 0
 
     def to_dict(self) -> dict:
         return {
@@ -34,6 +37,7 @@ class TraceEntry:
             "command": self.command,
             "exit_code": self.exit_code,
             "output_length": self.output_length,
+            "anti_cheat_flags": self.anti_cheat_flags,
         }
 
 
@@ -43,6 +47,7 @@ class PostTestResult:
     should_log: bool
     trace_entry: TraceEntry | None = None
     reminder_message: str = ""
+    anti_cheat_result: CheckResult | None = None
 
     def write_trace(self, trace_path: Path) -> None:
         """Append trace entry to file."""
@@ -56,6 +61,7 @@ def process_post_test(
     exit_code: int,
     stdout: str,
     cwd: str,
+    git_diff: str | None = None,
 ) -> PostTestResult:
     """
     Process post-test hook.
@@ -65,6 +71,7 @@ def process_post_test(
         exit_code: Command exit code
         stdout: Command output
         cwd: Working directory
+        git_diff: Optional git diff to check for anti-cheat patterns
 
     Returns:
         PostTestResult with trace entry and reminder
@@ -72,12 +79,20 @@ def process_post_test(
     if not is_pytest_command(command):
         return PostTestResult(should_log=False)
 
+    # Run anti-cheat validation if git_diff provided
+    anti_cheat_result = None
+    anti_cheat_flags = 0
+    if git_diff:
+        anti_cheat_result = validate_patch(git_diff)
+        anti_cheat_flags = len(anti_cheat_result.patterns)
+
     trace_entry = TraceEntry(
         timestamp=datetime.now().isoformat(),
         event="test_executed",
         command=command,
         exit_code=exit_code,
         output_length=len(stdout),
+        anti_cheat_flags=anti_cheat_flags,
     )
 
     reminder = (
@@ -87,10 +102,15 @@ def process_post_test(
         "3) 更新 hypotheses 状态 (confirmed/eliminated)"
     )
 
+    # Add anti-cheat warning if suspicious
+    if anti_cheat_result and anti_cheat_result.is_suspicious:
+        reminder += f"\n\n⚠️ 检测到可疑模式: {[p.name for p in anti_cheat_result.patterns]}"
+
     return PostTestResult(
         should_log=True,
         trace_entry=trace_entry,
         reminder_message=reminder,
+        anti_cheat_result=anti_cheat_result,
     )
 
 
