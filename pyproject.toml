@@ -23,6 +23,9 @@ mcp = [
     "pycg",
 ]
 
+[project.scripts]
+think-more-mcp = "think_more.mcp.server:run"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
