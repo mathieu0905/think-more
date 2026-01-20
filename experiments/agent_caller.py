@@ -242,12 +242,14 @@ class AgentCaller:
             f"bash /workspace/docker/configure_models.sh && "
             f"cp -r /root/.claude /home/nonroot/.claude && "
             f"chown -R nonroot:nonroot /home/nonroot/.claude && "
+            # 确保 /testbed/.claude 对 nonroot 可读（项目级 hooks）
+            f"chmod -R a+rX /testbed/.claude && "
             f"su nonroot -c \""
             f"source /opt/miniconda3/etc/profile.d/conda.sh && conda activate testbed && "
             f"cd /testbed && "
             # Claude CLI flag compatibility
-            f"(cat {container_prompt_path} | claude -p --model {claude_model} --dangerously-skip-permissions --verbose --output-type stream-json || "
-            f"cat {container_prompt_path} | claude -p --model {claude_model} --dangerously-skip-permissions --verbose --output-format stream-json)"
+            f"(cat {container_prompt_path} | claude -p --model {claude_model} --dangerously-skip-permissions --verbose --setting-sources user,project,local --output-type stream-json || "
+            f"cat {container_prompt_path} | claude -p --model {claude_model} --dangerously-skip-permissions --verbose --setting-sources user,project,local --output-format stream-json)"
             f"\" > {container_trace_path}; "
             f"cd /testbed && git diff > {container_patch_path}"
         )

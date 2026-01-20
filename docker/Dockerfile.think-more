@@ -20,21 +20,26 @@ RUN npm install -g @anthropic-ai/claude-code
 # 安装 Python 依赖 (Think More)
 RUN pip install --no-cache-dir pydantic>=2.0 jedi>=0.19 pyyaml>=6.0
 
-# 创建配置目录
+# 创建配置目录 (用户级和项目级)
 RUN mkdir -p /root/.claude/hooks /root/.claude/skills
+RUN mkdir -p /testbed/.claude/hooks /testbed/.claude/skills
 
 # 复制 Think More 源码
 COPY src/think_more /opt/think_more
 ENV PYTHONPATH="/opt:${PYTHONPATH}"
 
-# 复制 Claude Code 配置
+# 复制 Claude Code 用户级配置
 COPY .claude/settings.json /root/.claude/settings.json
 COPY .claude/skills/debugging.md /root/.claude/skills/debugging.md
 
-# 复制并设置 hooks (需要可执行权限)
-COPY docker/hooks/pytest_gate.py /root/.claude/hooks/pytest_gate.py
-COPY docker/hooks/post_test.py /root/.claude/hooks/post_test.py
-RUN chmod +x /root/.claude/hooks/*.py
+# 复制项目级配置 (Claude Code 会从工作目录加载 hooks)
+COPY docker/settings.project.json /testbed/.claude/settings.json
+COPY .claude/skills/debugging.md /testbed/.claude/skills/debugging.md
+
+# 复制 hooks 到项目目录 (使用绝对路径)
+COPY docker/hooks/pytest_gate.py /testbed/.claude/hooks/pytest_gate.py
+COPY docker/hooks/post_test.py /testbed/.claude/hooks/post_test.py
+RUN chmod +x /testbed/.claude/hooks/*.py
 
 # 设置环境变量
 ENV CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
